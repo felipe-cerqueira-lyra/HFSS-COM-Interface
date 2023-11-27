@@ -56,21 +56,23 @@ class HFSS():
 		self.oDesktop.QuitApplication()
 		del self.oDesktop
 		
-	def set_design_variable(self, varName, varValue):
-		change = ["NAME:AllTabs",[
-					"NAME:LocalVariableTab",
-					["NAME:PropServers","LocalVariables"],
-					["NAME:ChangedProps",[f"NAME:{varName}","Value:=",f"{varValue}"]]
-				]]
-		self.oDesign.ChangeProperty(change)
+    def set_design_variable(self, varDic):
+        change = ["NAME:AllTabs",[
+            "NAME:LocalVariableTab",
+            ["NAME:PropServers","LocalVariables"],
+            ["NAME:ChangedProps"]
+        ]]
+        for key,value in varDic.items(): change[1][2] += [[f'NAME:{key}', "Value:=", value]]
+        self.oDesign.ChangeProperty(change)
 	
-	def set_project_variable(self, varName, varValue):  
-		change = ["NAME:AllTabs",[
-					"NAME:ProjectVariableTab",
-					["NAME:PropServers","ProjectVariables"],
-					["NAME:ChangedProps",[f"NAME:{varName}","Value:=",f"{varValue}"]]
-				]]
-		self.oProject.ChangeProperty(change)
+    def set_project_variable(self, varDic):  
+        change = ["NAME:AllTabs",[
+            "NAME:ProjectVariableTab",
+            ["NAME:PropServers","ProjectVariables"],
+            ["NAME:ChangedProps"]
+        ]]
+        for key,value in varDic.items(): change[1][2] += [[f'NAME:{key}', "Value:=", value]]
+        self.oProject.ChangeProperty(change)
 		
 	def edit_material(self, materialName, materialProps):
 		'''
