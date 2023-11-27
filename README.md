@@ -58,6 +58,7 @@ hfss.close()
 - No momento o código só suporta uma instância. A utilização de multiplas instâncias não foi devidamente testada e terá comportamentos inesperados;
 - Modelagem de estruturas;
 - Criação de variáveis;
+- Suporte somente as geometrias em Azimute e Elevação.
 
 # Work in Progress
 - Suporte à multiplas instâncias/paralelização
