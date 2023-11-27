@@ -1,19 +1,32 @@
 from win32com import client
+import pythoncom
+from threading import Lock
 import os
 import pandas as pd
 import logging
+
+
 
 class HFSS():
 	FILEFORMAT		= {'tab':2, 'sNp':3, 'cit':4, 'm':7}
 	COMPLEXFORMAT	= {'Mag/Pha':0, 'Re/Im':1, 'db/Pha':2}
 	GEOMETRY		= {"Elevation":["Theta", "Phi", "0deg"], "Azimuth":["Phi", "Theta", "90deg"]}
 	
-	def __init__(self, projectAddr, designName=None):
-		self.root   = projectAddr[::-1].split('\\', maxsplit=1)[-1][::-1]
-		projectName = projectAddr.split('\\')[-1].split('.')[0]
+	def __init__(self, projectAddr, designName=None, stream=None):
+		self.root   = projectAddr[::-1].split('/', maxsplit=1)[-1][::-1]
+		projectName = projectAddr.split('/')[-1].split('.')[0]
 		
-		self.oApp		= client.Dispatch("AnsoftHfss.HfssScriptInterface")
-		#self.oApp		= client.Dispatch("Ansoft.ElectronicsDesktop.2019.2")
+		if stream:
+			pythoncom.CoInitialize()
+			stream.Seek(0,0)
+			self.unmarshaledInterface = pythoncom.CoUnmarshalInterface(stream, pythoncom.IID_IDispatch)
+			self.oApp = client.Dispatch(self.unmarshaledInterface)
+			
+		else:
+			# self.oApp = client.Dispatch("AnsoftHfss.HfssScriptInterface")
+			self.oApp = client.Dispatch("Ansoft.ElectronicsDesktop.2019.2")
+			self.oApp_id = pythoncom.CoMarshalInterThreadInterfaceInStream(pythoncom.IID_IDispatch, self.oApp)
+
 		self.oDesktop	= self.oApp.GetAppDesktop()
 		self.oDesktop.RestoreWindow()
 				
@@ -43,17 +56,19 @@ class HFSS():
 	def open_project(self, project_addr):
 		assert os.path.exists(project_addr), "Project not found!"
 		self.oDesktop.OpenProject(project_addr)            
-	
+
+	def close_project(self):
+		self.oProject.Save()
+		self.oProject.Close()
+
+		del self.oDesign
+		del self.oProject
+
 	def close(self):
-		
-		for prj in self.oDesktop.GetProjects():prj.Save()
-		for prj in self.oDesktop.GetProjects():prj.Close()
-		prj = None
-			
-		self.oDesign = None
-		self.oProject = None
-		
-		self.oDesktop.QuitApplication()
+		self.close_project()
+
+		if len(self.oDesktop.GetProjectList()) == 0:   
+			self.oDesktop.QuitApplication()
 		del self.oDesktop
 		del self.oApp
 		
@@ -100,8 +115,22 @@ class HFSS():
 		oDefinitionManager = self.oProject.GetDefinitionManager()
 		oDefinitionManager.EditMaterial(materialName, change)
 
-	def analyze(self, setup_name):
-		self.oDesign.Analyze(setup_name)
+	def analyze(self, setupName):
+		self.oDesign.Analyze(setupName)
+
+	def analyze_parallel(self, setupName, stream, lock, idx):
+		lock.acquire()
+		pythoncom.CoInitialize()
+		stream.Seek(0,0)
+		unmarshaledInterface = pythoncom.CoUnmarshalInterface(stream, pythoncom.IID_IDispatch)    
+		oApp = client.Dispatch(unmarshaledInterface)
+		oDesktop = oApp.GetAppDesktop()
+		oProject = oDesktop.GetProjects()[idx]
+		designName = oProject.GetTopDesignList()[0]
+		oDesign = oProject.GetDesign(designName)
+		lock.release()
+		oDesign.AnalyzeDistributed(setupName)
+		pythoncom.CoUninitialize()
 		
 	def clean_solutions(self):
 		self.oDesign.DeleteFullVariation("All", True)
@@ -185,7 +214,7 @@ class HFSS():
 		addr = f"{self.root}/Solution.tab" 
 		self.export_network_data(addr, solutionName, dataType, complexFormat)
 		
-		ND = pd.read_csv(addr,skiprows=1, sep='\t', skipinitialspace=True, index_col=0)
+		ND = pd.read_csv(addr,skiprows=1, sep='/t', skipinitialspace=True, index_col=0)
 		ND = ND.rename(columns={col:col.rstrip() for col in ND.columns})
 
 		oModule = self.oDesign.GetModule("BoundarySetup")
@@ -232,7 +261,20 @@ class HFSS():
 		return APD
 	
 	def read_report_data_from_file(self, addr):
-		df = pd.read_csv(addr,skiprows=0, sep='\t', skipinitialspace=True, index_col=0)
+		df = pd.read_csv(addr,skiprows=0, sep='/t', skipinitialspace=True, index_col=0)
 		df = df.rename(columns={col:col.rstrip() for col in df.columns})
 		return df
 		
+
+class ParallelInterface():
+	def __init__(self):
+		pythoncom.CoInitialize()
+		oApp = client.DispatchEx("Ansoft.ElectronicsDesktop.2019.2")
+		self.stream = pythoncom.CreateStreamOnHGlobal()
+		pythoncom.CoMarshalInterface(self.stream, 
+									 pythoncom.IID_IDispatch, 
+									 oApp._oleobj_, 
+									 pythoncom.MSHCTX_LOCAL, 
+									 pythoncom.MSHLFLAGS_TABLESTRONG)
+		del oApp
+		self.hfssLock = Lock()
