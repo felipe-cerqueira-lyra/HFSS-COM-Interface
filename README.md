@@ -1,6 +1,9 @@
 # HFSS-COM-Interface
 Interface em Python para a comunicação com o ansys hfss utilizando win32com
 
+Essa interface foi desenvolvida com o auxílio do "ANSYS Electronics Desktop™: Scripting Guide", que contém todas as funções para a comunicação com o HFSS.
+
+
 # Pre-requisitos
 - Testado em python 3.11
 - win32com
