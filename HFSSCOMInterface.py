@@ -35,7 +35,7 @@ class HFSS():
 		except Exception as e:
 			logging.error("Something went wrong! Closing application")
 			logging.error(e)
-			#self.close()
+			self.close()
 		
 	def save(self):
 		self.oProject.Save()
@@ -55,6 +55,7 @@ class HFSS():
 		
 		self.oDesktop.QuitApplication()
 		del self.oDesktop
+		del self.oApp
 		
 	def set_design_variable(self, varDic):
 		change = ["NAME:AllTabs",[
