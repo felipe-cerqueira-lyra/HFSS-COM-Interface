@@ -79,7 +79,7 @@ class HFSS():
 							"conductivity": value, 
 							"dielectric_loss_tangent":value}
 		'''
-		change = [f"NAME:{materialName}", "CoordinateSystemType:=", "Cartesian", "BulkOrSurfaceType", 1,
+		change = [f"NAME:{materialName}", "CoordinateSystemType:=", "Cartesian", "BulkOrSurfaceType:=", 1,
 					["NAME:PhysicsTypes", "set:=", ["Electromagnetic"]]]
 		
 		props = [[f"{key}:=",value] for key,value in materialProps.items()]
