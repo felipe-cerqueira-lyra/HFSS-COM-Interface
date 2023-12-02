@@ -1,7 +1,8 @@
 from win32com import client
 import pythoncom
-from threading import Lock
+from threading import Lock, current_thread
 import os
+from shutil import copy, rmtree
 import pandas as pd
 import logging
 from uuid import uuid4
@@ -129,20 +130,6 @@ class HFSS():
 	def analyze(self, setupName):
 		self.oDesign.AnalyzeDistributed(setupName)
 
-	def analyze_parallel(self, setupName, stream, lock, idx):
-		lock.acquire()
-		pythoncom.CoInitialize()
-		stream.Seek(0,0)
-		unmarshaledInterface = pythoncom.CoUnmarshalInterface(stream, pythoncom.IID_IDispatch)    
-		oApp = client.Dispatch(unmarshaledInterface)
-		oDesktop = oApp.GetAppDesktop()
-		oProject = oDesktop.GetProjects()[idx]
-		designName = oProject.GetTopDesignList()[0]
-		oDesign = oProject.GetDesign(designName)
-		lock.release()
-		oDesign.AnalyzeDistributed(setupName)
-		pythoncom.CoUninitialize()
-		
 	def clean_solutions(self):
 		self.oDesign.DeleteFullVariation("All", True)
 		
@@ -290,29 +277,50 @@ class ParallelInterface():
 		del oApp
 		self.lock = Lock()
 
-	def set_HFSS_parallel(self, stream, lock, idx):
-		lock.acquire()
-		pythoncom.CoInitialize()
-		stream.Seek(0,0)
-		unmarshaledInterface = pythoncom.CoUnmarshalInterface(stream, pythoncom.IID_IDispatch) 
-		oApp = client.Dispatch(unmarshaledInterface)
-		lock.release()
-		oDesktop = oApp.GetAppDesktop()
-		oProject = oDesktop.GetProjects()[idx]
-		designName = oProject.GetTopDesignList()[0]
-		oDesign = oProject.GetDesign(designName)
-
-		hfss = HFSS(inThread=True)
-		hfss.set_parallel_mode(oApp, oDesktop, oProject, oDesign)
+	def open_project(self, projectAddr, nThreads):
+		self.projectsAddr = [projectAddr.replace('.aedt', f'T{i}.aedt') for i in range(nThreads)]
+		for prjAddrThreads in self.projectsAddr:
+			copy(projectAddr, prjAddrThreads)
+		
+		hfss = HFSS(self.projectsAddr[0], stream=self.stream)
+		for prjAddrThreads in self.projectsAddr[1:]:
+			hfss.open_project(prjAddrThreads)
 
 		return hfss
 
 	def close(self):
 		self.stream.Seek(0,0)
 		pythoncom.CoReleaseMarshalData(self.stream)
+		del self.stream
 		pythoncom.CoUninitialize()
+		for prjAddrThreads in self.projectsAddr:
+			os.remove(prjAddrThreads) 
+			rmtree(prjAddrThreads.replace('.aedt', '.aedtresults'))
 
-	def analyse_parallel(self, setupName, stream, lock, idx):
-		hfss = self.set_HFSS_parallel(stream, lock, idx)
-		hfss.analyze(setupName)
+def set_HFSS_parallel(stream, lock, idx):
+	lock.acquire()
+	pythoncom.CoInitialize()
+	stream.Seek(0,0)
+	unmarshaledInterface = pythoncom.CoUnmarshalInterface(stream, pythoncom.IID_IDispatch) 
+	oApp = client.Dispatch(unmarshaledInterface)
+	lock.release()
+	oDesktop = oApp.GetAppDesktop()
+	oProject = oDesktop.GetProjects()[idx]
+	designName = oProject.GetTopDesignList()[0]
+	oDesign = oProject.GetDesign(designName)
 
+	hfss = HFSS(inThread=True)
+	hfss.set_parallel_mode(oApp, oDesktop, oProject, oDesign)
+
+	return hfss
+
+def run_in_parallel(pI):
+	def decorator(function):
+		def wrapper(*args, **kwargs):
+			idx = current_thread().name.split('_')[-1]
+			hfss = set_HFSS_parallel(pI.stream, pI.lock, idx)
+			result = function(*args, **kwargs, hfss=hfss)
+			del hfss
+			return result
+		return wrapper
+	return decorator
