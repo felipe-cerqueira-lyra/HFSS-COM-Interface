@@ -69,8 +69,9 @@ class HFSS():
 		self.oDesktop.OpenProject(project_addr)            
 
 	def close_project(self):
-		self.oProject.Save()
-		self.oProject.Close()
+		for pjr in self.oDesktop.GetProjects():
+			pjr.Save()
+			pjr.Close()
 
 		del self.oDesign
 		del self.oProject
@@ -78,8 +79,7 @@ class HFSS():
 	def close(self):
 		self.close_project()
 
-		if len(self.oDesktop.GetProjectList()) == 0:   
-			self.oDesktop.QuitApplication()
+		self.oDesktop.QuitApplication()
 		del self.oDesktop
 		del self.oApp
 		
@@ -307,7 +307,9 @@ class ParallelInterface():
 
 		return hfss
 
-	def release(self):
+	def close(self):
+		self.stream.Seek(0,0)
+		pythoncom.CoReleaseMarshalData(self.stream)
 		pythoncom.CoUninitialize()
 
 	def analyse_parallel(self, setupName, stream, lock, idx):
