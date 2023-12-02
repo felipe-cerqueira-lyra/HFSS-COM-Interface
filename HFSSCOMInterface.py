@@ -4,6 +4,7 @@ from threading import Lock
 import os
 import pandas as pd
 import logging
+from uuid import uuid4
 
 
 
@@ -12,9 +13,10 @@ class HFSS():
 	COMPLEXFORMAT	= {'Mag/Pha':0, 'Re/Im':1, 'db/Pha':2}
 	GEOMETRY		= {"Elevation":["Theta", "Phi", "0deg"], "Azimuth":["Phi", "Theta", "90deg"]}
 	
-	def __init__(self, projectAddr, designName=None, stream=None):
-		self.root   = projectAddr[::-1].split('/', maxsplit=1)[-1][::-1]
-		projectName = projectAddr.split('/')[-1].split('.')[0]
+	def __init__(self, projectAddr=None, designName=None, stream=None, inThread=False):
+		if inThread:
+			self.root = os.getcwd()
+			return
 		
 		if stream:
 			pythoncom.CoInitialize()
@@ -33,6 +35,9 @@ class HFSS():
 		try:
 			assert os.path.exists(projectAddr), "Project not found!"
 
+			self.root   = projectAddr[::-1].split('/', maxsplit=1)[-1][::-1]
+			projectName = projectAddr.split('/')[-1].split('.')[0]
+
 			self.oDesktop.OpenProject(projectAddr)
 			self.oProject = self.oDesktop.SetActiveProject(projectName)
 
@@ -49,7 +54,13 @@ class HFSS():
 			logging.error("Something went wrong! Closing application")
 			logging.error(e)
 			self.close()
-		
+	
+	def set_parallel_mode(self, oApp, oDesktop, oProject, oDesign):
+		self.oApp = oApp
+		self.oDesktop = oDesktop
+		self.oProject = oProject
+		self.oDesign = oDesign
+
 	def save(self):
 		self.oProject.Save()
 	
@@ -116,7 +127,7 @@ class HFSS():
 		oDefinitionManager.EditMaterial(materialName, change)
 
 	def analyze(self, setupName):
-		self.oDesign.Analyze(setupName)
+		self.oDesign.AnalyzeDistributed(setupName)
 
 	def analyze_parallel(self, setupName, stream, lock, idx):
 		lock.acquire()
@@ -211,10 +222,10 @@ class HFSS():
 		oModule.ExportToFile(reportName, fileAddr)
 		
 	def get_network_data(self, dataType, solutionName, complexFormat):
-		addr = f"{self.root}/Solution.tab" 
+		addr = f"{self.root}/{str(uuid4())}.tab"
 		self.export_network_data(addr, solutionName, dataType, complexFormat)
 		
-		ND = pd.read_csv(addr,skiprows=1, sep='/t', skipinitialspace=True, index_col=0)
+		ND = pd.read_csv(addr,skiprows=1, delim_whitespace=True, skipinitialspace=True, index_col=0)
 		ND = ND.rename(columns={col:col.rstrip() for col in ND.columns})
 
 		oModule = self.oDesign.GetModule("BoundarySetup")
@@ -234,7 +245,7 @@ class HFSS():
 		return nd
    
 	def get_near_field_data(self, dataType, xSweep, solutionName, context, freq):
-		addr = f"{self.root}/Solution.tab"
+		addr = f"{self.root}/{str(uuid4())}.tab"
 		
 		self.export_near_field_data(addr, solutionName, dataType, xSweep, context, freq)
 		NFD = read_report_data_from_file(addr)
@@ -243,7 +254,7 @@ class HFSS():
 		return NFD
 
 	def get_far_field_data(self, dataType, solutionName, context, freq):
-		addr = f"{self.root}/Solution.tab"
+		addr = f"{self.root}/{str(uuid4())}.tab"
 		
 		self.export_far_field_data(addr, solutionName, dataType, context, freq) 
 		FFD = read_report_data_from_file(addr)
@@ -252,7 +263,7 @@ class HFSS():
 		return FFD
 	
 	def get_antenna_parameter_data(self, dataType, solutionName, context):
-		addr = f"{self.root}/Solution.tab"
+		addr = f"{self.root}/{str(uuid4())}.tab"
 		
 		self.export_antenna_parameter_data(addr, solutionName, dataType, context)
 		APD = read_report_data_from_file(addr)
@@ -261,7 +272,7 @@ class HFSS():
 		return APD
 	
 	def read_report_data_from_file(self, addr):
-		df = pd.read_csv(addr,skiprows=0, sep='/t', skipinitialspace=True, index_col=0)
+		df = pd.read_csv(addr,skiprows=0, delim_whitespace=True, skipinitialspace=True, index_col=0)
 		df = df.rename(columns={col:col.rstrip() for col in df.columns})
 		return df
 		
@@ -277,4 +288,29 @@ class ParallelInterface():
 									 pythoncom.MSHCTX_LOCAL, 
 									 pythoncom.MSHLFLAGS_TABLESTRONG)
 		del oApp
-		self.hfssLock = Lock()
+		self.lock = Lock()
+
+	def set_HFSS_parallel(self, stream, lock, idx):
+		lock.acquire()
+		pythoncom.CoInitialize()
+		stream.Seek(0,0)
+		unmarshaledInterface = pythoncom.CoUnmarshalInterface(stream, pythoncom.IID_IDispatch) 
+		oApp = client.Dispatch(unmarshaledInterface)
+		lock.release()
+		oDesktop = oApp.GetAppDesktop()
+		oProject = oDesktop.GetProjects()[idx]
+		designName = oProject.GetTopDesignList()[0]
+		oDesign = oProject.GetDesign(designName)
+
+		hfss = HFSS(inThread=True)
+		hfss.set_parallel_mode(oApp, oDesktop, oProject, oDesign)
+
+		return hfss
+
+	def release(self):
+		pythoncom.CoUninitialize()
+
+	def analyse_parallel(self, setupName, stream, lock, idx):
+		hfss = self.set_HFSS_parallel(stream, lock, idx)
+		hfss.analyze(setupName)
+
