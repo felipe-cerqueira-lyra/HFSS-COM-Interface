@@ -60,7 +60,7 @@ del pi
   - caso se trate de uma variável de projeto, o nome deve incluir o símbolo "$"
   - ``` hfss.set_variable({'var1':val1, 'var2':val2, '$var3':val3}) ```
 - Edição de materiais;
-  - recebe como argumento o nome do matérial a ser editado e um dicionário cujos conjuntos chave/valor são os nomes das propriedades a serem alteradas e os valores desejados
+  - recebe como argumento o nome do material a ser editado e um dicionário cujos conjuntos chave/valor são os nomes das propriedades a serem alteradas e os valores desejados
   - ```hfss.edit_material("NomeMaterial", {"permittivity":val1, "permeability":val2, "conductivity":val3, "dielectric_loss_tangent":val4})```
 - Simulação;
   - recebe como argumento o nome para simulação
