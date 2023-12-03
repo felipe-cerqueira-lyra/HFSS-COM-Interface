@@ -282,15 +282,15 @@ class ParallelInterface():
 		for prjAddrThreads in self.projectsAddr:
 			copy(projectAddr, prjAddrThreads)
 		
-		hfss = HFSS(self.projectsAddr[0], stream=self.stream)
+		self.hfss = HFSS(self.projectsAddr[0], stream=self.stream)
 		for prjAddrThreads in self.projectsAddr[1:]:
-			hfss.open_project(prjAddrThreads)
-
-		return hfss
+			self.hfss.open_project(prjAddrThreads)
 
 	def close(self):
+		self.hfss.close()
 		self.stream.Seek(0,0)
 		pythoncom.CoReleaseMarshalData(self.stream)
+		del self.hfss
 		del self.stream
 		pythoncom.CoUninitialize()
 		for prjAddrThreads in self.projectsAddr:
