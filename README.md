@@ -89,10 +89,11 @@ del pi
   - limpa os dados armazenados em disco das simulações anteriores. Recomendável chamar com frequência para impedir redução da velocidade das simulações
   - ```hfss.clean_solutions()```
 
-# Restrições
+# Restrições/Problemas
 - Modelagem de estruturas;
 - Criação de variáveis;
 - Suporte somente as geometrias em Azimute e Elevação.
+- Multithreading limitado por um grande overhead, severamente limitando o ganho de performance
 
 # Work in Progress
 
