@@ -5,6 +5,7 @@ Essa interface foi desenvolvida com o auxílio do "ANSYS Electronics Desktop™:
 
 
 # Pre-requisitos
+- Windows
 - Testado em python 3.11
 - win32com
 - pandas
