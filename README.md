@@ -29,7 +29,7 @@ del hfss
 ## Multithread
 Para a utilização em multiplas threads, deve ser utilizada a classe ParallelInterface em conjunto com o decorador run_in_parallel. 
 
-A função a ser passada como target para a thread dever ser precedida pelo decorador run_in_parallel que recebe como parâmetro uma instância da classe ParallelInterface. Essa função é completamente personalizável, tendo como unica restrição a obrigatoriedade da presença do kwarg ```hfss=None```, que será passado utilizado decorador. Internamente, essa instância da clasee HFSS recebida pelo kwarg, será utilizada para controlar, dentro da thread, o HFSS. Todoas os métodos implementados na classe estão disponíveis com exceção dos métodos para abertura de projetos e fechamento da aplicação, uma vez que essa operações serão controladas pela classe ParallelInterface.
+A função a ser passada como target para a thread dever ser precedida pelo decorador run_in_parallel que recebe como parâmetro uma instância da classe ParallelInterface. Essa função é completamente personalizável, tendo como unica restrição a obrigatoriedade da presença do kwarg ```hfss=None```, que será passado pelo decorador. Internamente, essa instância da clasee HFSS recebida pelo kwarg, será utilizada para controlar, dentro da thread, o HFSS. Todoas os métodos implementados na classe estão disponíveis com exceção dos métodos para abertura de projetos e fechamento da aplicação, uma vez que essa operações serão controladas pela classe ParallelInterface.
 
 ```python
 from HFSSCOMInterface import ParallelInterface, run_in_parallel
