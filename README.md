@@ -29,7 +29,7 @@ del hfss
 ## Multithread
 Para a utilização em multiplas threads, deve ser utilizada a classe ParallelInterface em conjunto com o decorador run_in_parallel. 
 
-A função a ser passada como target para a thread dever ser precedida pelo decorador run_in_parallel que recebe como parâmetro uma instância da classe ParallelInterface. Essa função é completamente personalizável, tendo como unica restrição a obrigatoriedade da presença do kwarg ```hfss=None```, que será passado utilizado decorador. Internamente, essa instância da clasee HFSS recebida pelo kwarg, será utilizada para controlar, dentro da thread, o HFSS. Todoas os métodos implementados na classe estão disponíveis com exceção dos métodos para abertura de projetos e fechamento da aplicação, uma vez que essa operações serão controladas pela classe ParallelInterface.
+A função a ser passada como target para a thread dever ser precedida pelo decorador run_in_parallel que recebe como parâmetro uma instância da classe ParallelInterface. Essa função é completamente personalizável, tendo como unica restrição a obrigatoriedade da presença do kwarg ```hfss=None```, que será passado pelo decorador. Internamente, essa instância da clasee HFSS recebida pelo kwarg, será utilizada para controlar, dentro da thread, o HFSS. Todoas os métodos implementados na classe estão disponíveis com exceção dos métodos para abertura de projetos e fechamento da aplicação, uma vez que essa operações serão controladas pela classe ParallelInterface.
 
 ```python
 from HFSSCOMInterface import ParallelInterface, run_in_parallel
@@ -60,7 +60,7 @@ del pi
   - caso se trate de uma variável de projeto, o nome deve incluir o símbolo "$"
   - ``` hfss.set_variable({'var1':val1, 'var2':val2, '$var3':val3}) ```
 - Edição de materiais;
-  - recebe como argumento o nome do matérial a ser editado e um dicionário cujos conjuntos chave/valor são os nomes das propriedades a serem alteradas e os valores desejados
+  - recebe como argumento o nome do material a ser editado e um dicionário cujos conjuntos chave/valor são os nomes das propriedades a serem alteradas e os valores desejados
   - ```hfss.edit_material("NomeMaterial", {"permittivity":val1, "permeability":val2, "conductivity":val3, "dielectric_loss_tangent":val4})```
 - Simulação;
   - recebe como argumento o nome para simulação
@@ -89,10 +89,11 @@ del pi
   - limpa os dados armazenados em disco das simulações anteriores. Recomendável chamar com frequência para impedir redução da velocidade das simulações
   - ```hfss.clean_solutions()```
 
-# Restrições
+# Restrições/Problemas
 - Modelagem de estruturas;
 - Criação de variáveis;
 - Suporte somente as geometrias em Azimute e Elevação.
+- Multithreading limitado por um grande overhead, severamente limitando o ganho de performance
 
 # Work in Progress
 
