@@ -158,6 +158,10 @@ class HFSS():
 			["X Component:=", xData, "Y Component:=", [yData]],#ReportDataArray
 			[]
 		)
+
+	def delete_repport(self, repportName):
+		oModule = self.oDesign.GetModule("ReportSetup")
+		oModule.DeleteReports([repportName])
 	  
 	def create_near_field_repport(self, repportName, DisplayType, solutionName, context, xData, yData, freq):
 		oModule = self.oDesign.GetModule("ReportSetup")
@@ -192,17 +196,17 @@ class HFSS():
 	def export_near_field_data(self, fileAddr, solutionName, dataType, xSweep, context, freq):
 		self.create_near_field_repport("tempRepport", "Data Table", solutionName, context, xSweep, dataType, freq)
 		self.export_report_data("tempRepport", fileAddr)
-		oModule.DeleteReports(["tempRepport"])
+		self.delete_repport("tempRepport")
 	
 	def export_far_field_data(self, fileAddr, solutionName, dataType, context, freq):
 		self.create_far_field_repport("tempRepport", "Data Table", solutionName, context, dataType, freq)
 		self.export_report_data("tempRepport", fileAddr)
-		oModule.DeleteReports(["tempRepport"])
+		self.delete_repport("tempRepport")
 		
 	def export_antenna_parameter_data(self, fileAddr, solutionName, dataType, context):
 		self.create_antenna_parameter_repport("tempRepport", "Data Table", solutionName, context, dataType)
 		self.export_report_data("tempRepport", fileAddr)
-		oModule.DeleteReports(["tempRepport"])
+		self.delete_repport("tempRepport")
 	
 	def export_report_data(self, reportName, fileAddr):
 		oModule = self.oDesign.GetModule("ReportSetup")
@@ -235,7 +239,7 @@ class HFSS():
 		addr = f"{self.root}/{str(uuid4())}.tab"
 		
 		self.export_near_field_data(addr, solutionName, dataType, xSweep, context, freq)
-		NFD = read_report_data_from_file(addr)
+		NFD = self.read_report_data_from_file(addr)
 		os.remove(addr)
 		
 		return NFD
@@ -244,7 +248,7 @@ class HFSS():
 		addr = f"{self.root}/{str(uuid4())}.tab"
 		
 		self.export_far_field_data(addr, solutionName, dataType, context, freq) 
-		FFD = read_report_data_from_file(addr)
+		FFD = self.read_report_data_from_file(addr)
 		os.remove(addr)
 		
 		return FFD
@@ -253,7 +257,7 @@ class HFSS():
 		addr = f"{self.root}/{str(uuid4())}.tab"
 		
 		self.export_antenna_parameter_data(addr, solutionName, dataType, context)
-		APD = read_report_data_from_file(addr)
+		APD = self.read_report_data_from_file(addr)
 		os.remove(addr)
 		
 		return APD
