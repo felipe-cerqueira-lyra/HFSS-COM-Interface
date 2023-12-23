@@ -132,6 +132,9 @@ class HFSS():
 
 	def clean_solutions(self):
 		self.oDesign.DeleteFullVariation("All", True)
+
+	def clean_messages(self):
+		self.oDesktop.ClearMessages(self.oProject.getName(), '', 3)
 		
 	def create_repport(self, repportName, ReportType, DisplayType, solutionName, contextArray, FamiliesArray, xData, yData):
 		'''
@@ -317,7 +320,7 @@ def set_HFSS_parallel(stream, lock, idx):
 	oDesign = oProject.GetDesign(designName)
 
 	hfss = HFSS(inThread=True)
-	hfss.set_parallel_mode(oApp, oDesktop, oProject, oDesign)
+	hfss.set_parallel_mode(oApp, oDesktop, oProject,  oDesign)
 
 	return hfss
 
